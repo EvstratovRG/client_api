@@ -1,19 +1,31 @@
-import requests
+import logging
 import os
 
-from dotenv import load_dotenv
+import requests
+
 from telegram.ext import Updater, CommandHandler
 from telegram import ReplyKeyboardMarkup
 
+from dotenv import load_dotenv
 
 load_dotenv()
+
 token = os.getenv('TOKEN')
 url = os.getenv('URL')
-updater = Updater(token)
+new_url = os.getenv('NEW_URL')
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO)
 
 
 def get_new_image():
-    response = requests.get(url).json()
+    try:
+        response = requests.get(url)
+    except Exception as error:
+        logging.error(f'Ошибка при запросе к основному API: {error}')
+        response = requests.get(new_url)
+    response = response.json()
     random_cat = response[0].get('url')
     return random_cat
 
@@ -35,8 +47,14 @@ def wake_up(update, context):
     context.bot.send_photo(chat.id, get_new_image())
 
 
-updater.dispatcher.add_handler(CommandHandler('start', wake_up))
-updater.dispatcher.add_handler(CommandHandler('newcat', new_cat))
+def main():
+    updater = Updater(token)
+    updater.dispatcher.add_handler(CommandHandler('start', wake_up))
+    updater.dispatcher.add_handler(CommandHandler('newcat', new_cat))
 
-updater.start_polling()
-updater.idle()
+    updater.start_polling()
+    updater.idle()
+
+
+if __name__ == '__main__':
+    main()
